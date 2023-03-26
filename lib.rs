@@ -4,65 +4,38 @@
 mod inkfit {
 
     use ink::storage::{Mapping};
-
 #[ink(storage)]
-#[derive(Default)]
     pub struct Inkfit {
-        users: Mapping<String, Mapping<String, String>>
+        users: Mapping<String, u32>,
+        active_days: Mapping<String, String>
     }
 
     impl Inkfit {
-        /// Constructor that initializes the `bool` value to the given `init_value`.
-        #[ink(constructor)]
-        pub fn new(init_value: bool) -> Self {
-            Self { value: init_value }
-        }
-
-        /// Constructor that initializes the `bool` value to `false`.
-        ///
-        /// Constructors can delegate to other constructors.
         #[ink(constructor)]
         pub fn default() -> Self {
-            Self::new(Default::default())
+            Self { users: Mapping::new(), active_days: Mapping::new() }
         }
 
-        /// A message that can be called on instantiated contracts.
-        /// This one flips the value of the stored `bool` from `true`
-        /// to `false` and vice versa.
         #[ink(message)]
-        pub fn flip(&mut self) {
-            self.value = !self.value;
+        pub fn add_user(&mut self, user: String) {
+            self.users.insert(user, &0);
         }
 
-        /// Simply returns the current value of our `bool`.
         #[ink(message)]
-        pub fn get(&self) -> bool {
-            self.value
+        pub fn get_user_activites(&self, user: String) -> Option<u32> {
+            self.users.get(user)
         }
     }
 
-    /// Unit tests in Rust are normally defined within such a `#[cfg(test)]`
-    /// module and test functions are marked with a `#[test]` attribute.
-    /// The below code is technically just normal Rust code.
     #[cfg(test)]
     mod tests {
-        /// Imports all the definitions from the outer scope so we can use them here.
         use super::*;
-
-        /// We test if the default constructor does its job.
         #[ink::test]
         fn default_works() {
-            let inkfit = Inkfit::default();
-            assert_eq!(inkfit.get(), false);
-        }
-
-        /// We test a simple use case of our contract.
-        #[ink::test]
-        fn it_works() {
-            let mut inkfit = Inkfit::new(false);
-            assert_eq!(inkfit.get(), false);
-            inkfit.flip();
-            assert_eq!(inkfit.get(), true);
+            let mut inkfit = Inkfit::default();
+            let user_to_add = "pawel".to_string();
+            inkfit.add_user(user_to_add);
+            assert_eq!(inkfit.get_user_activites("pawel".to_string()), Some(0));
         }
     }
 }
