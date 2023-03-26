@@ -7,11 +7,10 @@ mod inkfit {
     #[ink(storage)]
     pub struct Inkfit {
         users: Mapping<String, u32>,
-        active_days: Mapping<String, String>,
+        active_days: Vec<String>
     }
 
     #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-    #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
     pub enum CustomError {
         UserDoesntExist
     }
@@ -21,7 +20,7 @@ mod inkfit {
         pub fn default() -> Self {
             Self {
                 users: Mapping::new(),
-                active_days: Mapping::new(),
+                active_days: Vec::new(),
             }
         }
 
@@ -31,17 +30,28 @@ mod inkfit {
         }
 
         #[ink(message)]
-        pub fn get_user_activites(&self, user: String) -> Option<u32> {
+        pub fn get_user_activity_score(&self, user: String) -> Option<u32> {
             self.users.get(user)
         }
 
         #[ink(message)]
-        pub fn add_activity(&mut self, user: String, activity: String) {
+        pub fn add_activity(&mut self, user: String, activity: String, activity_date: String) {
             let mut active_user = self.users.get(&user).ok_or(CustomError::UserDoesntExist).unwrap();
             self.active_days
-                .insert(user.clone() + &self.env().block_timestamp().to_string(), &activity);
+                .push(user.clone() + &activity_date + &activity);
             active_user += 1;
             self.users.insert(user, &active_user);
+        }
+
+        #[ink(message)]
+        pub fn get_user_activities (&self, user: String) -> Option<Vec<String>> {
+            let mut user_activities = Vec::new();
+            for activity in &self.active_days {
+                if activity.contains(&user) {
+                    user_activities.push(activity.clone());
+                }
+            }
+            Some(user_activities)
         }
     }
 
@@ -53,7 +63,10 @@ mod inkfit {
             let mut inkfit = Inkfit::default();
             let user_to_add = "pawel".to_string();
             inkfit.add_user(user_to_add);
-            assert_eq!(inkfit.get_user_activites("pawel".to_string()), Some(0));
+            assert_eq!(inkfit.get_user_activity_score("pawel".to_string()), Some(0));
+            inkfit.add_activity("pawel".to_owned(), "23 mins 3500 steps".to_string(), "26/03/2023".to_string());
+            assert_eq!(inkfit.get_user_activity_score("pawel".to_string()), Some(1));
+
         }
     }
 }
