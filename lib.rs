@@ -3,16 +3,19 @@
 #[ink::contract]
 mod inkfit {
 
-    use ink::{storage::Mapping};
+    use ink::prelude::string::String;
+    use ink::prelude::vec::Vec;
+    use ink::storage::Mapping;
+
     #[ink(storage)]
     pub struct Inkfit {
         users: Mapping<String, u32>,
-        active_days: Vec<String>
+        active_days: Vec<String>,
     }
 
     #[derive(Copy, Clone, Debug, PartialEq, Eq)]
     pub enum CustomError {
-        UserDoesntExist
+        UserDoesntExist,
     }
 
     impl Inkfit {
@@ -36,7 +39,11 @@ mod inkfit {
 
         #[ink(message)]
         pub fn add_activity(&mut self, user: String, activity: String, activity_date: String) {
-            let mut active_user = self.users.get(&user).ok_or(CustomError::UserDoesntExist).unwrap();
+            let mut active_user = self
+                .users
+                .get(&user)
+                .ok_or(CustomError::UserDoesntExist)
+                .unwrap();
             self.active_days
                 .push(user.clone() + &activity_date + &activity);
             active_user += 1;
@@ -44,7 +51,7 @@ mod inkfit {
         }
 
         #[ink(message)]
-        pub fn get_user_activities (&self, user: String) -> Option<Vec<String>> {
+        pub fn get_user_activities(&self, user: String) -> Option<Vec<String>> {
             let mut user_activities = Vec::new();
             for activity in &self.active_days {
                 if activity.contains(&user) {
@@ -64,9 +71,12 @@ mod inkfit {
             let user_to_add = "pawel".to_string();
             inkfit.add_user(user_to_add);
             assert_eq!(inkfit.get_user_activity_score("pawel".to_string()), Some(0));
-            inkfit.add_activity("pawel".to_owned(), "23 mins 3500 steps".to_string(), "26/03/2023".to_string());
+            inkfit.add_activity(
+                "pawel".to_owned(),
+                "23 mins 3500 steps".to_string(),
+                "26/03/2023".to_string(),
+            );
             assert_eq!(inkfit.get_user_activity_score("pawel".to_string()), Some(1));
-
         }
     }
 }
