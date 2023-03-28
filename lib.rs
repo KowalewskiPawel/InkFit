@@ -41,7 +41,30 @@ mod inkfit {
 
         #[ink(message)]
         pub fn add_user(&mut self, user: String) {
+            let caller = self.env().caller();
+            if !self.admins.contains(&caller) { 
+                return
+            }
             self.users.insert(user, &0);
+        }
+
+        #[ink(message)]
+        pub fn add_admin(&mut self, admin: AccountId) {
+            let caller = self.env().caller();
+            if !self.admins.contains(&caller) { 
+                return
+            }
+            self.admins.push(admin);
+        }
+
+        #[ink(message)]
+        pub fn remove_admin(&mut self, admin: AccountId) {
+            let caller = self.env().caller();
+            if !self.admins.contains(&caller) { 
+                return
+            }
+            let index_of_admin_to_remove = self.admins.iter().position(|&x| x == admin).unwrap();
+            self.admins.swap_remove(index_of_admin_to_remove);
         }
 
         #[ink(message)]
@@ -51,6 +74,10 @@ mod inkfit {
 
         #[ink(message)]
         pub fn add_activity(&mut self, user: String, activity: String, activity_date: String) {
+            let caller = self.env().caller();
+            if !self.admins.contains(&caller) { 
+                return
+            }
             let mut active_user = self
                 .users
                 .get(&user)
