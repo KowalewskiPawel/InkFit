@@ -23,10 +23,12 @@ mod inkfit {
         #[ink(constructor)]
         pub fn default() -> Self {
             let caller = Self::env().caller();
+            let mut admin_vec = Vec::new();
+            admin_vec.push(caller);
             Self {
                 users: Mapping::new(),
                 active_days: Vec::new(),
-                admins: vec![caller]
+                admins: admin_vec,
             }
         }
 
