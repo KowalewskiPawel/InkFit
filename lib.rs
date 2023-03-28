@@ -11,6 +11,7 @@ mod inkfit {
     pub struct Inkfit {
         users: Mapping<String, u32>,
         active_days: Vec<String>,
+        admins: Vec<AccountId>
     }
 
     #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -21,9 +22,20 @@ mod inkfit {
     impl Inkfit {
         #[ink(constructor)]
         pub fn default() -> Self {
+            let caller = Self::env().caller();
             Self {
                 users: Mapping::new(),
                 active_days: Vec::new(),
+                admins: vec![caller]
+            }
+        }
+
+        #[ink(constructor)]
+        pub fn new(owners: Vec<AccountId>) -> Self {
+            Self {
+                users: Mapping::new(),
+                active_days: Vec::new(),
+                admins: owners
             }
         }
 
