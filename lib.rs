@@ -11,7 +11,9 @@ mod inkfit {
     pub struct Inkfit {
         users: Mapping<String, u32>,
         active_days: Vec<String>,
-        admins: Vec<AccountId>
+        admins: Vec<AccountId>,
+        min_active_mins: u32,
+        min_steps: u32,
     }
 
     #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -29,23 +31,27 @@ mod inkfit {
                 users: Mapping::new(),
                 active_days: Vec::new(),
                 admins: admin_vec,
+                min_active_mins: 0,
+                min_steps: 0,
             }
         }
 
         #[ink(constructor)]
-        pub fn new(owners: Vec<AccountId>) -> Self {
+        pub fn new(owners: Vec<AccountId>, mins: u32, steps: u32) -> Self {
             Self {
                 users: Mapping::new(),
                 active_days: Vec::new(),
-                admins: owners
+                admins: owners,
+                min_active_mins: mins,
+                min_steps: steps
             }
         }
 
         #[ink(message)]
         pub fn add_user(&mut self, user: String) {
             let caller = self.env().caller();
-            if !self.admins.contains(&caller) { 
-                return
+            if !self.admins.contains(&caller) {
+                return;
             }
             self.users.insert(user, &0);
         }
@@ -53,8 +59,8 @@ mod inkfit {
         #[ink(message)]
         pub fn add_admin(&mut self, admin: AccountId) {
             let caller = self.env().caller();
-            if !self.admins.contains(&caller) { 
-                return
+            if !self.admins.contains(&caller) {
+                return;
             }
             self.admins.push(admin);
         }
@@ -62,8 +68,8 @@ mod inkfit {
         #[ink(message)]
         pub fn remove_admin(&mut self, admin: AccountId) {
             let caller = self.env().caller();
-            if !self.admins.contains(&caller) { 
-                return
+            if !self.admins.contains(&caller) {
+                return;
             }
             let index_of_admin_to_remove = self.admins.iter().position(|&x| x == admin).unwrap();
             self.admins.swap_remove(index_of_admin_to_remove);
@@ -75,18 +81,27 @@ mod inkfit {
         }
 
         #[ink(message)]
-        pub fn add_activity(&mut self, user: String, activity: String, activity_date: String) {
+        pub fn add_activity(&mut self, user: String, active_mins: u32, steps_made: u32, activity_date: String) {
             let caller = self.env().caller();
-            if !self.admins.contains(&caller) { 
-                return
+            if !self.admins.contains(&caller) {
+                return;
             }
+
+            if active_mins < self.min_active_mins || steps_made < self.min_steps {
+                return;
+            }
+
+            let mins_str = &active_mins.to_string();
+            let steps_str = &steps_made.to_string();
+            
+            let activity = String::from(user.clone() + " active mins: " + mins_str + " steps made: " + steps_str + " from: " + &activity_date);
             let mut active_user = self
                 .users
                 .get(&user)
                 .ok_or(CustomError::UserDoesntExist)
                 .unwrap();
             self.active_days
-                .push(user.clone() + &activity_date + &activity);
+                .push(activity);
             active_user += 1;
             self.users.insert(user, &active_user);
         }
@@ -101,6 +116,24 @@ mod inkfit {
             }
             Some(user_activities)
         }
+
+        #[ink(message)]
+        pub fn set_min_active_mins(&mut self, mins: u32) {
+            let caller = self.env().caller();
+            if !self.admins.contains(&caller) {
+                return;
+            }
+            self.min_active_mins = mins;
+        }
+
+        #[ink(message)]
+        pub fn set_min_steps(&mut self, steps: u32) {
+            let caller = self.env().caller();
+            if !self.admins.contains(&caller) {
+                return;
+            }
+            self.min_steps = steps;
+        }
     }
 
     #[cfg(test)]
@@ -114,7 +147,31 @@ mod inkfit {
             assert_eq!(inkfit.get_user_activity_score("pawel".to_string()), Some(0));
             inkfit.add_activity(
                 "pawel".to_owned(),
-                "23 mins 3500 steps".to_string(),
+                23,
+                4000,
+                "26/03/2023".to_string(),
+            );
+            assert_eq!(inkfit.get_user_activity_score("pawel".to_string()), Some(1));
+        }
+
+        #[ink::test]
+        fn min_mins_work() {
+            let mut inkfit = Inkfit::default();
+            let user_to_add = "pawel".to_string();
+            inkfit.add_user(user_to_add);
+            assert_eq!(inkfit.get_user_activity_score("pawel".to_string()), Some(0));
+            inkfit.set_min_active_mins(40);
+            inkfit.add_activity(
+                "pawel".to_owned(),
+                23,
+                4000,
+                "26/03/2023".to_string(),
+            );
+            assert_eq!(inkfit.get_user_activity_score("pawel".to_string()), Some(0));
+            inkfit.add_activity(
+                "pawel".to_owned(),
+                43,
+                4000,
                 "26/03/2023".to_string(),
             );
             assert_eq!(inkfit.get_user_activity_score("pawel".to_string()), Some(1));
