@@ -21,6 +21,7 @@ mod inkfit {
     pub enum CustomError {
         UserDoesNotExist,
         AccessOnlyForAdmins,
+        AdminNotFound,
         TooLittleMins,
         TooLittleSteps
     }
@@ -79,6 +80,9 @@ mod inkfit {
             if !self.admins.contains(&caller) {
                 return Err(CustomError::AccessOnlyForAdmins);
             }
+            if !self.admins.contains(&admin) {
+                return Err(CustomError::AdminNotFound);
+            }
             let index_of_admin_to_remove = self.admins.iter().position(|&x| x == admin).unwrap();
             self.admins.swap_remove(index_of_admin_to_remove);
             Ok(())
@@ -86,8 +90,10 @@ mod inkfit {
 
         #[ink(message)]
         pub fn get_user_activity_score(&self, user: String) -> Result<u32> {
-            let user_activity_score = self.users.get(user).ok_or(CustomError::UserDoesNotExist).unwrap();
-            Ok(user_activity_score)
+            if !self.users.contains(&user) {
+                return Err(CustomError::UserDoesNotExist);
+            }
+            Ok(self.users.get(user).ok_or(CustomError::UserDoesNotExist).unwrap())
         }
 
         #[ink(message)]
@@ -123,6 +129,11 @@ mod inkfit {
                     + " from: "
                     + &activity_date,
             );
+
+            if !self.users.contains(&user) {
+                return Err(CustomError::UserDoesNotExist);
+            }
+
             let mut active_user = self
                 .users
                 .get(&user)
@@ -136,7 +147,9 @@ mod inkfit {
 
         #[ink(message)]
         pub fn get_user_activities(&self, user: String) -> Result<Vec<String>> {
-            let _does_user_exist = self.users.get(&user).ok_or(CustomError::UserDoesNotExist);
+            if !self.users.contains(&user) {
+                return Err(CustomError::UserDoesNotExist);
+            }
             let mut user_activities = Vec::new();
             for activity in &self.active_days {
                 if activity.contains(&user) {
@@ -202,6 +215,16 @@ mod inkfit {
             assert_eq!(inkfit.add_activity("pawel".to_owned(), 23, 4000, "26/03/2023".to_string()), Err(CustomError::TooLittleSteps));
             assert_eq!(inkfit.add_activity("pawel".to_owned(), 43, 10000, "26/03/2023".to_string()), Ok(()));
             assert_eq!(inkfit.get_user_activity_score("pawel".to_string()), Ok(1));
+        }
+
+        #[ink::test]
+        fn only_extisitng_users_work() {
+            let mut inkfit = Inkfit::default();
+            let user_to_add = "pawel".to_string();
+            assert_eq!(inkfit.add_user(user_to_add), Ok(()));
+            assert_eq!(inkfit.add_activity("krzysiek".to_owned(), 23, 4000, "26/03/2023".to_string()), Err(CustomError::UserDoesNotExist));
+            assert_eq!(inkfit.get_user_activity_score("krzysiek".to_string()), Err(CustomError::UserDoesNotExist));
+            assert_eq!(inkfit.get_user_activities("krzysiek".to_string()), Err(CustomError::UserDoesNotExist));
         }
     }
 }
