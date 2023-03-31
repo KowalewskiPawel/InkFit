@@ -23,7 +23,7 @@ mod inkfit {
         AccessOnlyForAdmins,
         AdminNotFound,
         TooLittleMins,
-        TooLittleSteps
+        TooLittleSteps,
     }
 
     pub type Result<T> = core::result::Result<T, CustomError>;
@@ -93,7 +93,11 @@ mod inkfit {
             if !self.users.contains(&user) {
                 return Err(CustomError::UserDoesNotExist);
             }
-            Ok(self.users.get(user).ok_or(CustomError::UserDoesNotExist).unwrap())
+            Ok(self
+                .users
+                .get(user)
+                .ok_or(CustomError::UserDoesNotExist)
+                .unwrap())
         }
 
         #[ink(message)]
@@ -189,7 +193,10 @@ mod inkfit {
             let user_to_add = "pawel".to_string();
             assert_eq!(inkfit.add_user(user_to_add), Ok(()));
             assert_eq!(inkfit.get_user_activity_score("pawel".to_string()), Ok(0));
-            assert_eq!(inkfit.add_activity("pawel".to_owned(), 23, 4000, "26/03/2023".to_string()), Ok(()));
+            assert_eq!(
+                inkfit.add_activity("pawel".to_owned(), 23, 4000, "26/03/2023".to_string()),
+                Ok(())
+            );
             assert_eq!(inkfit.get_user_activity_score("pawel".to_string()), Ok(1));
         }
 
@@ -200,8 +207,14 @@ mod inkfit {
             assert_eq!(inkfit.add_user(user_to_add), Ok(()));
             assert_eq!(inkfit.get_user_activity_score("pawel".to_string()), Ok(0));
             assert_eq!(inkfit.set_min_active_mins(40), Ok(()));
-            assert_eq!(inkfit.add_activity("pawel".to_owned(), 23, 4000, "26/03/2023".to_string()), Err(CustomError::TooLittleMins));
-            assert_eq!(inkfit.add_activity("pawel".to_owned(), 43, 4000, "26/03/2023".to_string()), Ok(()));
+            assert_eq!(
+                inkfit.add_activity("pawel".to_owned(), 23, 4000, "26/03/2023".to_string()),
+                Err(CustomError::TooLittleMins)
+            );
+            assert_eq!(
+                inkfit.add_activity("pawel".to_owned(), 43, 4000, "26/03/2023".to_string()),
+                Ok(())
+            );
             assert_eq!(inkfit.get_user_activity_score("pawel".to_string()), Ok(1));
         }
 
@@ -212,8 +225,14 @@ mod inkfit {
             assert_eq!(inkfit.add_user(user_to_add), Ok(()));
             assert_eq!(inkfit.get_user_activity_score("pawel".to_string()), Ok(0));
             assert_eq!(inkfit.set_min_steps(8000), Ok(()));
-            assert_eq!(inkfit.add_activity("pawel".to_owned(), 23, 4000, "26/03/2023".to_string()), Err(CustomError::TooLittleSteps));
-            assert_eq!(inkfit.add_activity("pawel".to_owned(), 43, 10000, "26/03/2023".to_string()), Ok(()));
+            assert_eq!(
+                inkfit.add_activity("pawel".to_owned(), 23, 4000, "26/03/2023".to_string()),
+                Err(CustomError::TooLittleSteps)
+            );
+            assert_eq!(
+                inkfit.add_activity("pawel".to_owned(), 43, 10000, "26/03/2023".to_string()),
+                Ok(())
+            );
             assert_eq!(inkfit.get_user_activity_score("pawel".to_string()), Ok(1));
         }
 
@@ -222,9 +241,28 @@ mod inkfit {
             let mut inkfit = Inkfit::default();
             let user_to_add = "pawel".to_string();
             assert_eq!(inkfit.add_user(user_to_add), Ok(()));
-            assert_eq!(inkfit.add_activity("krzysiek".to_owned(), 23, 4000, "26/03/2023".to_string()), Err(CustomError::UserDoesNotExist));
-            assert_eq!(inkfit.get_user_activity_score("krzysiek".to_string()), Err(CustomError::UserDoesNotExist));
-            assert_eq!(inkfit.get_user_activities("krzysiek".to_string()), Err(CustomError::UserDoesNotExist));
+            assert_eq!(
+                inkfit.add_activity("krzysiek".to_owned(), 23, 4000, "26/03/2023".to_string()),
+                Err(CustomError::UserDoesNotExist)
+            );
+            assert_eq!(
+                inkfit.get_user_activity_score("krzysiek".to_string()),
+                Err(CustomError::UserDoesNotExist)
+            );
+            assert_eq!(
+                inkfit.get_user_activities("krzysiek".to_string()),
+                Err(CustomError::UserDoesNotExist)
+            );
+        }
+
+        #[ink::test]
+        fn only_admins_can_add_new_admins() {
+            let mut inkfit = Inkfit::default();
+            let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
+            let contract = ink::env::account_id::<ink::env::DefaultEnvironment>();
+            ink::env::test::set_callee::<ink::env::DefaultEnvironment>(contract);
+            ink::env::test::set_caller::<ink::env::DefaultEnvironment>(accounts.bob);
+            assert_eq!(inkfit.add_admin(accounts.alice), Err(CustomError::AccessOnlyForAdmins));
         }
     }
 }
