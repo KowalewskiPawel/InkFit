@@ -54,32 +54,31 @@ mod inkfit {
             }
         }
 
-        #[ink(message)]
-        pub fn add_user(&mut self, user: String) -> Result<()> {
+        fn check_access(&self) -> Result<()> {
             let caller = self.env().caller();
             if !self.admins.contains(&caller) {
                 return Err(CustomError::AccessOnlyForAdmins);
             }
+            Ok(())
+        }
+
+        #[ink(message)]
+        pub fn add_user(&mut self, user: String) -> Result<()> {
+            self.check_access()?;
             self.users.insert(user, &0);
             Ok(())
         }
 
         #[ink(message)]
         pub fn add_admin(&mut self, admin: AccountId) -> Result<()> {
-            let caller = self.env().caller();
-            if !self.admins.contains(&caller) {
-                return Err(CustomError::AccessOnlyForAdmins);
-            }
+            self.check_access()?;
             self.admins.push(admin);
             Ok(())
         }
 
         #[ink(message)]
         pub fn remove_admin(&mut self, admin: AccountId) -> Result<()> {
-            let caller = self.env().caller();
-            if !self.admins.contains(&caller) {
-                return Err(CustomError::AccessOnlyForAdmins);
-            }
+            self.check_access()?;
             if !self.admins.contains(&admin) {
                 return Err(CustomError::AdminNotFound);
             }
@@ -108,11 +107,7 @@ mod inkfit {
             steps_made: u32,
             activity_date: String,
         ) -> Result<()> {
-            let caller = self.env().caller();
-            if !self.admins.contains(&caller) {
-                return Err(CustomError::AccessOnlyForAdmins);
-            }
-
+            self.check_access()?;
             if active_mins < self.min_active_mins {
                 return Err(CustomError::TooLittleMins);
             }
@@ -165,20 +160,14 @@ mod inkfit {
 
         #[ink(message)]
         pub fn set_min_active_mins(&mut self, mins: u32) -> Result<()> {
-            let caller = self.env().caller();
-            if !self.admins.contains(&caller) {
-                return Err(CustomError::AccessOnlyForAdmins);
-            }
+            self.check_access()?;
             self.min_active_mins = mins;
             Ok(())
         }
 
         #[ink(message)]
         pub fn set_min_steps(&mut self, steps: u32) -> Result<()> {
-            let caller = self.env().caller();
-            if !self.admins.contains(&caller) {
-                return Err(CustomError::AccessOnlyForAdmins);
-            }
+            self.check_access()?;
             self.min_steps = steps;
             Ok(())
         }
@@ -262,7 +251,10 @@ mod inkfit {
             let contract = ink::env::account_id::<ink::env::DefaultEnvironment>();
             ink::env::test::set_callee::<ink::env::DefaultEnvironment>(contract);
             ink::env::test::set_caller::<ink::env::DefaultEnvironment>(accounts.bob);
-            assert_eq!(inkfit.add_admin(accounts.alice), Err(CustomError::AccessOnlyForAdmins));
+            assert_eq!(
+                inkfit.add_admin(accounts.alice),
+                Err(CustomError::AccessOnlyForAdmins)
+            );
         }
     }
 }
